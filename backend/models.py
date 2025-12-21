@@ -22,6 +22,6 @@ class Transaction(Base):
     category: Mapped[str] = mapped_column(String(255))
     risk_score: Mapped[int] = mapped_column(Integer)
     status: Mapped[str] = mapped_column(String(20))  # 'Safe' | 'Suspicious' | 'Review'
-    flag_type: Mapped[str] = mapped_column(String(50), nullable=True) # e.g., 'Velocity', 'Amount', 'Location'
-    flag_reason: Mapped[str] = mapped_column(String(500), nullable=True)
+    flag_type: Mapped[str] = mapped_column(String(1000), nullable=True) # JSON or string
+    flag_reason: Mapped[str] = mapped_column(String(1000), nullable=True)
     is_training_data: Mapped[bool] = mapped_column(Boolean, default=False)
