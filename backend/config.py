@@ -7,11 +7,8 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
 
     def db_url(self) -> str:
-        # Prefer DATABASE_URL if provided; fallback to local SQLite
+        # Prefer MySQL if provided; fallback to local SQLite
         if self.DATABASE_URL:
-            # SQLAlchemy requires 'postgresql://' instead of 'postgres://'
-            if self.DATABASE_URL.startswith("postgres://"):
-                return self.DATABASE_URL.replace("postgres://", "postgresql://", 1)
             return self.DATABASE_URL
         return "sqlite:///anomalyse.db"
 

@@ -1,88 +1,47 @@
 # Anomalyse - Fraud Detection System
 
-Anomalyse is a comprehensive fraud detection system that integrates a FastAPI-driven Machine Learning backend with a React-based frontend. It provides real-time transaction monitoring, risk scoring, and analytical tools for fraud prevention.
+Anomalyse is a professional banking fraud detection interface built with React, TypeScript, and Tailwind CSS. It visualizes suspicious transactions and provides an interface for analysts to review potential fraud.
 
-## 🌐 Deployment
-To deploy Anomalyse, you need to deploy the frontend and backend separately:
+## Prerequisites
 
-### 1. Backend (Recommended: Render/Railway)
-- Set environment variables:
-  - `DATABASE_URL`: Your PostgreSQL connection string (from Supabase/Neon).
-  - `JWT_SECRET`: A secure random string.
-- Build Command: `pip install -r requirements.txt`
-- Start Command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+Before running this project, ensure you have the following installed:
+- [Node.js](https://nodejs.org/) (Version 16 or higher)
+- [VS Code](https://code.visualstudio.com/)
 
-### 2. Frontend (Recommended: Vercel/Netlify)
-- Set environment variables:
-  - `VITE_API_URL`: The URL of your deployed backend.
-- Build Command: `npm run build`
-- Output Directory: `dist`
+## Installation
 
-- **Frontend**: React 18, TypeScript, Tailwind CSS, Recharts.
-- **Backend**: FastAPI, Python, SQLAlchemy, Scikit-learn.
-- **ML Model**: Random Forest Classifier with advanced feature engineering.
+1.  **Clone or Download** this repository to your local machine.
+2.  **Open** the project folder in VS Code.
+3.  **Install Dependencies** by running the following command in the terminal:
+    ```bash
+    npm install
+    ```
 
-## 📁 Project Structure
+## Running the Application
 
-```text
-Anomalyse/
-├── frontend/          # React + Vite application
-├── backend/           # FastAPI + ML integration
-└── TECHNICAL_SPECS.md # Detailed requirements & specifications
-```
+To start the local development server:
 
-## 🛠️ Getting Started
-
-### Prerequisites
-- [Node.js](https://nodejs.org/) (v16+)
-- [Python](https://www.python.org/) (v3.8+)
-- Git
-
-### Installation
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/your-username/anomalyse.git
-   cd anomalyse
-   ```
-
-2. **Backend Setup**:
-   ```bash
-   cd backend
-   python -m venv .venv
-   # Activate venv:
-   # Windows: .venv\Scripts\activate
-   # Mac/Linux: source .venv/bin/activate
-   pip install -r requirements.txt
-   python migrate_and_seed.py
-   ```
-
-3. **Frontend Setup**:
-   ```bash
-   cd ../frontend
-   npm install
-   ```
-
-## 🏃 Running the Application
-
-### 1. Start the Backend
 ```bash
-cd backend
-uvicorn main:app --reload
-```
-The API will be available at `http://localhost:8000`.
-
-### 2. Start the Frontend
-```bash
-cd frontend
 npm run dev
 ```
-The dashboard will be available at `http://localhost:5173`.
 
-## 📚 Documentation
-- [Technical Specifications](TECHNICAL_SPECS.md)
-- [Backend Documentation](backend/README.md)
-- [Frontend Documentation](frontend/README.md)
+The application will be available at `http://localhost:5173`.
 
-## 📄 License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## Project Structure
+
+- **src/** (Root in this setup): Contains all source code.
+    - **components/**: Reusable UI components (Layout, ProtectedRoute).
+    - **pages/**: Main application screens (Dashboard, Transactions, Upload).
+    - **services/**: Mock services simulating backend API calls.
+    - **types.ts**: TypeScript interfaces for data models.
+- **index.html**: Entry point for the application.
+
+## Tech Stack
+
+- **React 18**: UI Library
+- **Vite**: Build tool and development server
+- **TypeScript**: Static typing
+- **Recharts**: Data visualization and charts
+- **Tailwind CSS**: Utility-first CSS framework (via CDN for simplicity)
+- **React Router**: Client-side routing
+- **Lucide React**: Icon set
