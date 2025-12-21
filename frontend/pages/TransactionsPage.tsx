@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { transactionService } from '../services/transactionService';
 import { Transaction } from '../types';
 import { sortTransactions } from '../utils/sorting';
-import { AlertCircle, CheckCircle, Search, Trash2, Filter, Flag, Info, ArrowUpDown, Zap, DollarSign, MapPin, AlertTriangle } from 'lucide-react';
+import { AlertCircle, CheckCircle, Search, Trash2, Filter, Flag, ArrowUpDown, Zap, DollarSign, MapPin, AlertTriangle } from 'lucide-react';
 
 const getFlagIcon = (type?: string, severity: 'critical' | 'normal' = 'normal') => {
   if (!type) return null;
