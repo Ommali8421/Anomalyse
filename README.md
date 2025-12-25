@@ -50,8 +50,15 @@ Follow these steps to get the project running on your local machine.
 ### **1. Clone the Repository**
 ```bash
 git clone https://github.com/Ommali8421/Anomalyse
-cd Anomalyse-main
+cd Anomalyse
 ```
+
+### **2. Demo Credentials**
+For testing purposes, you can use the following analyst account:
+- **Analyst ID**: `analyst@anomalyse.bank`
+- **Password**: `password123`
+
+*(Alternatively, use the "Auto-fill Demo Credentials" button on the login page)*
 
 ### **2. Backend Setup**
 1. Navigate to the backend directory:
