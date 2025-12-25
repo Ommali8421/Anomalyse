@@ -16,42 +16,31 @@ from config import settings
 from database import engine, SessionLocal
 from models import Base, User, Transaction as TransactionModel
 from auth_utils import hash_password, verify_password, create_access_token, decode_token
-from model.preprocessing import preprocess_data
+from model.feature_pipeline import FeatureEngineer
 
 app = FastAPI(title="Anomalyse Backend", version="0.3.0")
 
-# Flag generation utility
-def generate_transaction_flags(status: str, amount: float, city: str) -> str:
-    if status not in ['Suspicious', 'Review', 'Review Required']:
-        return None
-        
-    flag_types_def = ['Velocity', 'Amount', 'Location', 'Pattern', 'Device']
-    reasons = {
-        'Velocity': "Unusual frequency of transactions within a short time window.",
-        'Amount': f"Transaction amount significantly higher than user's historical average. Amount: ${amount:.2f}",
-        'Location': f"Transaction originated from a location inconsistent with previous activity. Location: {city}",
-        'Pattern': "Detected complex pattern matching known fraud vectors.",
-        'Device': "Unrecognized device fingerprint or suspicious IP range."
-    }
-    
-    num_flags = random.randint(1, 3)
-    if status == 'Review Required' and num_flags < 2:
-        num_flags = 2
-        
-    selected_types = random.sample(flag_types_def, num_flags)
-    
-    # If amount is high, ensure Amount flag is present
-    if amount > 1000 and 'Amount' not in selected_types:
-        selected_types[0] = 'Amount'
-    
-    flags_list = []
-    for f_type in selected_types:
-        flags_list.append({
-            "type": f_type,
-            "reason": reasons[f_type]
-        })
-        
-    return json.dumps(flags_list)
+def compute_rule_reasons(features_row: dict, amount: float) -> List[Dict[str, str]]:
+    flags: List[Dict[str, str]] = []
+    try:
+        gv = float(features_row.get('Geo_Velocity_Check', 0))
+        z = float(features_row.get('Amount_Z_Score', 0))
+        cnt = int(features_row.get('Txn_Count_30_Min', 0))
+        tsl = float(features_row.get('Time_Since_Last_TXN_Sec', 0))
+    except Exception:
+        gv, z, cnt, tsl = 0.0, 0.0, 0, 0.0
+    # Fast Location: mirror Rule_Reason pattern from ML_Model_Final_.ipynb
+    # Uses geospatial velocity check (> 1 implies required travel time exceeds observed gap)
+    if gv > 1.0:
+        flags.append({"type": "Fast Location", "reason": f"Geospatial anomaly: travel too fast (ratio {gv:.2f})."})
+    # High Value: mirror Rule_Reason pattern
+    # Trigger on extreme z-score or absolute amount threshold
+    if z >= 3.0 or amount >= 100000:
+        flags.append({"type": "High Value", "reason": f"Amount deviation detected (z-score {z:.2f})."})
+    # Velocity: only flag those with time difference > 0 and < 10 seconds
+    if (tsl > 0.0) and (tsl < 10.0):
+        flags.append({"type": "Velocity", "reason": f"last gap {int(tsl)}s between consecutive transactions."})
+    return flags
 
 # CORS: allow frontend on Vite default port
 app.add_middleware(
@@ -62,7 +51,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-MODEL_PATH = Path(__file__).parent / "model" / "pipeline.pkl"
+MODEL_PATH = Path(__file__).parent / "model" / "model.pkl"
 # META_PATH is no longer strictly needed as pipeline handles features, but we can keep it if we want
 # META_PATH = Path(__file__).parent / "model_meta.json" 
 
@@ -93,7 +82,6 @@ class Transaction(BaseModel):
     user_id: str
     city: str
     category: str
-    riskScore: float
     status: str
     flag_type: Optional[str] = None
     flag_reason: Optional[str] = None
@@ -155,7 +143,7 @@ async def login(payload: LoginRequest, db: Session = Depends(get_db)):
 
 @app.get("/transactions", response_model=List[Transaction])
 async def get_transactions(_: None = Depends(require_token), db: Session = Depends(get_db)):
-    rows = db.scalars(select(TransactionModel).order_by(TransactionModel.timestamp.desc())).all()
+    rows = db.scalars(select(TransactionModel).order_by(TransactionModel.timestamp.asc())).all()
     out: List[Transaction] = []
     for r in rows:
         flags_list = []
@@ -186,7 +174,6 @@ async def get_transactions(_: None = Depends(require_token), db: Session = Depen
             user_id=r.user_id,
             city=r.city,
             category=r.category,
-            riskScore=float(r.risk_score),
             status=r.status,
             flag_type=primary_type,
             flag_reason=primary_reason,
@@ -199,12 +186,12 @@ async def get_transactions(_: None = Depends(require_token), db: Session = Depen
 async def get_metrics(_: None = Depends(require_token), db: Session = Depends(get_db)):
     total = db.scalar(select(func.count()).select_from(TransactionModel)) or 0
     flagged = db.scalar(select(func.count()).where(TransactionModel.status == "Suspicious")) or 0
-    avg_risk = db.scalar(select(func.avg(TransactionModel.risk_score))) or 0
+    avg_risk = (float(flagged) / float(total) * 100.0) if total else 0.0
 
     rows = db.execute(
         select(
             func.date(TransactionModel.timestamp).label("date"),
-            func.sum(case((TransactionModel.status == "Suspicious", 1), else_=0)).label("fraudCount"),
+            func.sum(case((TransactionModel.status.in_(["Suspicious", "Fake/Suspicious"]), 1), else_=0)).label("fraudCount"),
             func.sum(case((TransactionModel.status == "Safe", 1), else_=0)).label("safeCount")
         )
         .group_by(func.date(TransactionModel.timestamp))
@@ -247,6 +234,12 @@ async def clear_transactions(_: None = Depends(require_token), db: Session = Dep
     db.commit()
     deleted = res.rowcount or 0
     return {"success": True, "deleted": int(deleted)}
+@app.post("/transactions/notify")
+async def notify_transaction(payload: Dict, _: None = Depends(require_token)):
+    txn_id = payload.get("id")
+    if not txn_id:
+        raise HTTPException(status_code=400, detail="Missing transaction id")
+    return {"success": True}
 
 @app.post("/predict", response_model=PredictionResponse)
 async def predict_fraud(txn: PredictionRequest, db: Session = Depends(get_db)):
@@ -298,33 +291,27 @@ async def predict_fraud(txn: PredictionRequest, db: Session = Depends(get_db)):
     
     df = pd.DataFrame(history_data)
     
-    # Process
     try:
-        df_processed = preprocess_data(df)
-    except Exception as e:
-         raise HTTPException(status_code=500, detail=f"Preprocessing failed: {str(e)}")
-
-    # Get the last row (our current transaction)
-    last_row = df_processed.iloc[[-1]]
-    
-    try:
-        # Predict
-        pred = pipeline.predict(last_row)[0]
-        probs = pipeline.predict_proba(last_row)[0]
+        preds_all = pipeline.predict(df)
+        probs_all = pipeline.predict_proba(df)
+        pred = preds_all[-1]
+        probs = probs_all[-1]
         
         classes = pipeline.classes_
         if 0 in classes:
             normal_idx = list(classes).index(0)
-            fraud_prob = 1.0 - probs[normal_idx]
+            safe_prob = float(probs[normal_idx])
         else:
-            fraud_prob = 1.0
+            safe_prob = 0.0
             
-        risk_score = fraud_prob * 100
+        fe = FeatureEngineer()
+        features_df = fe.fit_transform(df)
+        features_row = features_df.iloc[-1].to_dict()
+        flags = compute_rule_reasons(features_row, txn.amount)
+        status = "Suspicious" if flags else "Safe"
+        risk_score = round((1.0 - safe_prob) * 100.0, 2)
+        fe = FeatureEngineer()
         is_fraud = pred != 0
-        status = "Suspicious" if is_fraud else "Safe"
-        
-        flags_json = generate_transaction_flags(status, txn.amount, txn.city)
-        flags = json.loads(flags_json) if flags_json else []
 
         return PredictionResponse(
             is_fraud=bool(is_fraud),
@@ -361,45 +348,37 @@ async def upload_csv(file: UploadFile = File(...), _: None = Depends(require_tok
     if missing:
         raise HTTPException(status_code=400, detail=f"Missing columns: {missing}")
 
-    # Process data
     try:
-        # We ensure Fraud_Type exists for preprocessing compatibility if needed, 
-        # though preprocess_data doesn't use it for feature calc.
-        if "Fraud_Type" not in df.columns:
-            df["Fraud_Type"] = 0
-            
-        df_processed = preprocess_data(df)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Preprocessing failed: {str(e)}")
-
-    try:
-        preds = pipeline.predict(df_processed)
-        probs = pipeline.predict_proba(df_processed)
+        preds = pipeline.predict(df)
+        probs = pipeline.predict_proba(df)
         classes = pipeline.classes_
         normal_idx = list(classes).index(0) if 0 in classes else -1
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Model prediction failed: {str(e)}")
 
+    fe = FeatureEngineer()
+    features_df = fe.fit_transform(df)
+
     new_txns = []
     for i, pred in enumerate(preds):
         if normal_idx != -1:
-            fraud_prob = 1.0 - probs[i][normal_idx]
+            safe_prob = float(probs[i][normal_idx])
         else:
-            fraud_prob = 1.0
+            safe_prob = 0.0
             
-        risk = fraud_prob * 100
-        status = "Suspicious" if pred != 0 else "Safe"
+        risk = round((1.0 - safe_prob) * 100.0, 2)
         amount = float(df.iloc[i]["Amount"])
-        city = str(df.iloc[i]["City"])
-        
-        flags_json = generate_transaction_flags(status, amount, city)
+        features_row = features_df.iloc[i].to_dict()
+        flags = compute_rule_reasons(features_row, amount)
+        status = "Suspicious" if flags else "Safe"
+        flags_json = json.dumps(flags) if flags else None
 
         new_txns.append(TransactionModel(
             id=str(uuid.uuid4()),
             timestamp=pd.to_datetime(df.iloc[i]["Timestamp"]).to_pydatetime(),
             amount=amount,
             user_id=str(df.iloc[i]["UserID"]),
-            city=city,
+            city=str(df.iloc[i]["City"]),
             category=str(df.iloc[i]["Category"]),
             risk_score=int(risk),
             status=status,

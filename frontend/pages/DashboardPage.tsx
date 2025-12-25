@@ -10,12 +10,14 @@ import { FraudMetrics } from '../types';
 const DashboardPage: React.FC = () => {
   const [metrics, setMetrics] = useState<FraudMetrics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<string>('');
 
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
         const data = await dashboardService.getFraudMetrics();
         setMetrics(data);
+        setLastUpdated(new Date().toLocaleString());
       } catch (error) {
         console.error("Failed to load dashboard metrics", error);
       } finally {
@@ -23,6 +25,8 @@ const DashboardPage: React.FC = () => {
       }
     };
     fetchMetrics();
+    const interval = setInterval(fetchMetrics, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   if (loading || !metrics) {
@@ -39,7 +43,28 @@ const DashboardPage: React.FC = () => {
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-bold text-slate-900">Fraud Overview</h1>
-        <p className="text-slate-500">Real-time analysis of transaction streams</p>
+        <div className="flex items-center gap-3 flex-wrap">
+          <p className="text-slate-500">Real-time analysis of transaction streams</p>
+          <button
+            className="px-3 py-1.5 rounded text-sm font-medium bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200"
+            onClick={async () => {
+              setLoading(true);
+              try {
+                const data = await dashboardService.getFraudMetrics();
+                setMetrics(data);
+                setLastUpdated(new Date().toLocaleString());
+              } finally {
+                setLoading(false);
+              }
+            }}
+            title="Refresh metrics"
+          >
+            Refresh
+          </button>
+          {lastUpdated && (
+            <span className="text-xs text-slate-400">Last updated: {lastUpdated}</span>
+          )}
+        </div>
       </header>
 
       {/* KPI Cards */}
@@ -131,21 +156,21 @@ const DashboardPage: React.FC = () => {
 
       {/* Charts Row 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
           <h2 className="text-lg font-semibold text-slate-800 mb-4">Volume Comparison (Genuine vs Fake)</h2>
           <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={metrics.fraudTrend}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis dataKey="date" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip cursor={{fill: '#f1f5f9'}} />
-                  <Legend />
-                  <Bar dataKey="safeCount" name="Genuine Transactions" fill="#10b981" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="fraudCount" name="Fake Transactions" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={metrics.fraudTrend}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis dataKey="date" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip cursor={{ fill: '#f1f5f9' }} />
+                <Legend />
+                <Bar dataKey="safeCount" name="Genuine Transactions" fill="#10b981" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="fraudCount" name="Fake Transactions" fill="#ef4444" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
     </div>

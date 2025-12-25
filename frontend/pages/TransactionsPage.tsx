@@ -8,13 +8,13 @@ const getFlagIcon = (type: string, isCritical: boolean) => {
   if (!type) return null;
   const className = `w-4 h-4 ${isCritical ? 'text-red-600' : 'text-indigo-600'}`;
   const lower = type.toLowerCase();
-  
+
   if (lower.includes('velocity')) return <Zap className={className} />;
   if (lower.includes('value') || lower.includes('amount')) return <DollarSign className={className} />;
   if (lower.includes('frequency')) return <Activity className={className} />;
   if (lower.includes('category')) return <Tag className={className} />;
   if (lower.includes('model') || lower.includes('anomaly')) return <Cpu className={className} />;
-  
+
   return <AlertTriangle className={className} />;
 };
 
@@ -28,34 +28,31 @@ const getFlagSeverity = (type: string): 'critical' | 'normal' => {
 
 const FlagItem = ({ type, reason, timestamp }: { type: string; reason?: string; timestamp?: string }) => {
   if (!type) return <span className="text-slate-400 text-xs">-</span>;
-  
+
   const severity = getFlagSeverity(type);
   const isCritical = severity === 'critical';
-  
+
   return (
-    <div 
-      className="group relative flex items-center gap-2 h-6 cursor-help focus:outline-none" 
+    <div
+      className="group relative flex items-center gap-2 h-6 cursor-help focus:outline-none"
       aria-label={`Flag: ${type}, Severity: ${severity}. Press Enter or Hover for details.`}
       tabIndex={0}
       role="button"
     >
       {getFlagIcon(type, isCritical)}
-      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
-        isCritical 
-          ? 'bg-red-100 text-red-800 border-red-200' 
-          : 'bg-indigo-50 text-indigo-700 border-indigo-200'
-      }`}>
+      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${isCritical
+        ? 'bg-red-100 text-red-800 border-red-200'
+        : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+        }`}>
         {type}
       </span>
       {reason && (
         <div className="absolute right-0 bottom-full mb-2 w-80 p-0 bg-white text-slate-800 text-xs rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus:opacity-100 group-focus:visible transition-all duration-200 delay-150 z-50 pointer-events-none border border-slate-200 overflow-hidden whitespace-normal">
-          <div className={`px-3 py-2 border-b font-semibold flex justify-between items-center ${
-            isCritical ? 'bg-red-50 border-red-100 text-red-900' : 'bg-indigo-50 border-indigo-100 text-indigo-900'
-          }`}>
+          <div className={`px-3 py-2 border-b font-semibold flex justify-between items-center ${isCritical ? 'bg-red-50 border-red-100 text-red-900' : 'bg-indigo-50 border-indigo-100 text-indigo-900'
+            }`}>
             <span className="truncate mr-2">{type}</span>
-            <span className={`uppercase text-[10px] tracking-wider px-1.5 py-0.5 rounded flex-shrink-0 ${
-              isCritical ? 'bg-red-200/50' : 'bg-indigo-200/50'
-            }`}>{severity}</span>
+            <span className={`uppercase text-[10px] tracking-wider px-1.5 py-0.5 rounded flex-shrink-0 ${isCritical ? 'bg-red-200/50' : 'bg-indigo-200/50'
+              }`}>{severity}</span>
           </div>
           <div className="p-3 space-y-2">
             <div>
@@ -66,8 +63,8 @@ const FlagItem = ({ type, reason, timestamp }: { type: string; reason?: string; 
             </div>
             {timestamp && (
               <div className="pt-2 border-t border-slate-100">
-                 <div className="text-slate-500 text-[10px] uppercase tracking-wide font-medium mb-0.5">Raised At</div>
-                 <div className="text-slate-600 font-mono text-[10px]">{new Date(timestamp).toLocaleString()}</div>
+                <div className="text-slate-500 text-[10px] uppercase tracking-wide font-medium mb-0.5">Raised At</div>
+                <div className="text-slate-600 font-mono text-[10px]">{new Date(timestamp).toLocaleString()}</div>
               </div>
             )}
           </div>
@@ -95,12 +92,14 @@ const TransactionsPage: React.FC = () => {
         const sortedData = sortTransactions(data);
         setTransactions(sortedData);
       } catch (error) {
-        console.error("Failed to load transactions");
+        setStatus({ type: 'error', message: 'Failed to load transactions. Backend might be unavailable.' });
       } finally {
         setLoading(false);
       }
     };
     fetchTransactions();
+    const interval = setInterval(fetchTransactions, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const uniqueReasons = useMemo(() => {
@@ -128,9 +127,9 @@ const TransactionsPage: React.FC = () => {
   }, [transactions]);
 
   const filteredData = useMemo(() => {
-    let data = transactions.filter(t => 
-      (t.id.toLowerCase().includes(filter.toLowerCase()) || 
-       t.user_id.toLowerCase().includes(filter.toLowerCase())) &&
+    let data = transactions.filter(t =>
+      (t.id.toLowerCase().includes(filter.toLowerCase()) ||
+        t.user_id.toLowerCase().includes(filter.toLowerCase())) &&
       (reasonFilter ? (t.flags ? t.flags.some(f => f.reason === reasonFilter) : t.flag_reason === reasonFilter) : true) &&
       (flagFilter ? (t.flags ? t.flags.some(f => f.type === flagFilter) : t.flag_type === flagFilter) : true)
     );
@@ -162,18 +161,16 @@ const TransactionsPage: React.FC = () => {
     setSortConfig({ key, direction });
   };
 
-  const getStatusBadge = (score: number) => {
-    if (score > 70) {
+  const hasFlags = (t: Transaction) => {
+    return (t.flags && t.flags.length > 0) || !!t.flag_type;
+  };
+
+  const getStatusBadge = (t: Transaction) => {
+    if (hasFlags(t)) {
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
           <AlertCircle className="w-3 h-3" />
-          Fake / Suspicious
-        </span>
-      );
-    } else if (score > 40) {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
-          Review Required
+          Suspicious
         </span>
       );
     }
@@ -186,24 +183,20 @@ const TransactionsPage: React.FC = () => {
   };
 
   const getActionGuidance = (txn: Transaction) => {
-    if (txn.riskScore > 70) {
+    if (hasFlags(txn)) {
       return (
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-semibold text-red-700 bg-red-50 px-2 py-1 rounded border border-red-100 w-fit">
-            Immediate Review
-          </span>
-          <span className="text-[10px] text-slate-500">Check user history & device</span>
-        </div>
-      );
-    }
-    if (txn.riskScore > 40) {
-      return (
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-100 w-fit">
-            Verify Details
-          </span>
-           <span className="text-[10px] text-slate-500">Confirm with customer</span>
-        </div>
+        <button
+          className="text-xs font-medium text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-100 hover:bg-amber-100"
+          onClick={async () => {
+            try {
+              await transactionService.notifyTransaction(txn.id);
+            } catch {
+              // swallow for now
+            }
+          }}
+        >
+          Confirm with user
+        </button>
       );
     }
     return <span className="text-xs text-slate-400">Routine monitoring</span>;
@@ -244,7 +237,7 @@ const TransactionsPage: React.FC = () => {
                 {uniqueReasons.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
-             <div className="relative">
+            <div className="relative">
               <Flag className="absolute left-2 top-2.5 h-4 w-4 text-slate-400" />
               <select
                 value={flagFilter}
@@ -264,7 +257,7 @@ const TransactionsPage: React.FC = () => {
             </div>
             <input
               type="text"
-              placeholder="Search ID or Merchant..."
+              placeholder="Search Transaction-ID or User-ID..."
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               className="pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full md:w-64"
@@ -294,14 +287,11 @@ const TransactionsPage: React.FC = () => {
                     <div className="flex items-center gap-1">Transaction ID <ArrowUpDown className="w-3 h-3" /></div>
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100" onClick={() => requestSort('timestamp')}>
-                     <div className="flex items-center gap-1">Date & Time <ArrowUpDown className="w-3 h-3" /></div>
+                    <div className="flex items-center gap-1">Date & Time <ArrowUpDown className="w-3 h-3" /></div>
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Merchant / Location</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">User-ID / Location</th>
                   <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100" onClick={() => requestSort('amount')}>
-                     <div className="flex items-center justify-end gap-1">Amount <ArrowUpDown className="w-3 h-3" /></div>
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100" onClick={() => requestSort('riskScore')}>
-                     <div className="flex items-center justify-center gap-1">Risk Score <ArrowUpDown className="w-3 h-3" /></div>
+                    <div className="flex items-center justify-end gap-1">Amount <ArrowUpDown className="w-3 h-3" /></div>
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100" onClick={() => requestSort('flag_type')}>
@@ -314,14 +304,14 @@ const TransactionsPage: React.FC = () => {
               </thead>
               <tbody className="bg-white divide-y divide-slate-200">
                 {filteredData.map((txn) => (
-                  <tr 
+                  <tr
                     key={txn.id}
-                    className={`transition-colors ${
-                      txn.riskScore > 70 ? 'bg-red-50/50 hover:bg-red-50' : 'hover:bg-slate-50'
-                    }`}
+                    className={`transition-colors ${hasFlags(txn) ? 'bg-red-50/60 hover:bg-red-50 border-l-2 border-red-200' : 'hover:bg-slate-50'}`}
+                    aria-label={hasFlags(txn) ? 'Suspicious transaction' : 'Safe transaction'}
+                    data-suspicious={hasFlags(txn) ? 'true' : 'false'}
                   >
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                        {txn.id}
+                      {txn.id}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{txn.timestamp}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
@@ -331,44 +321,31 @@ const TransactionsPage: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-slate-900">
                       ₹{txn.amount.toFixed(2)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="flex items-center justify-center">
-                        <div className="w-16 bg-slate-200 rounded-full h-2 mr-2 overflow-hidden">
-                          <div 
-                            className={`h-2 rounded-full ${txn.riskScore > 70 ? 'bg-red-600' : txn.riskScore > 40 ? 'bg-amber-500' : 'bg-green-500'}`}
-                            style={{ width: `${txn.riskScore}%` }}
-                          ></div>
-                        </div>
-                        <span className={`text-xs font-bold ${txn.riskScore > 70 ? 'text-red-700' : 'text-slate-600'}`}>
-                          {txn.riskScore}%
-                        </span>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {getStatusBadge(txn)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap align-top">
+                      <div className="flex flex-col gap-1">
+                        {(txn.flags && txn.flags.length > 0) ? (
+                          txn.flags.map((flag, idx) => (
+                            <FlagItem key={idx} type={flag.type} reason={flag.reason} timestamp={txn.timestamp} />
+                          ))
+                        ) : (
+                          <FlagItem type={txn.flag_type || ''} reason={txn.flag_reason} timestamp={txn.timestamp} />
+                        )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                       {getStatusBadge(txn.riskScore)}
-                     </td>
-                     <td className="px-6 py-4 whitespace-nowrap align-top">
-                       <div className="flex flex-col gap-1">
-                         {(txn.flags && txn.flags.length > 0) ? (
-                             txn.flags.map((flag, idx) => (
-                                 <FlagItem key={idx} type={flag.type} reason={flag.reason} timestamp={txn.timestamp} />
-                             ))
-                         ) : (
-                             <FlagItem type={txn.flag_type || ''} reason={txn.flag_reason} timestamp={txn.timestamp} />
-                         )}
-                       </div>
-                     </td>
-                     <td className="px-6 py-4 whitespace-nowrap align-top">
-                       {getActionGuidance(txn)}
-                     </td>
-                   </tr>
+                    <td className="px-6 py-4 whitespace-nowrap align-top">
+                      {getActionGuidance(txn)}
+                    </td>
+                  </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
       </div>
-      
+
       {status.type === 'success' && (
         <div className="p-4 bg-green-50 border border-green-100 rounded-lg">
           <p className="text-sm text-green-700">{status.message}</p>

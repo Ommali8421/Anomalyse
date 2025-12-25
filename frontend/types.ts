@@ -14,8 +14,8 @@ export interface Transaction {
   user_id: string;
   city: string;
   category: string;
-  riskScore: number;
-  status: 'Safe' | 'Suspicious' | 'Review' | 'Review Required' | 'Approved' | 'Confirmed Fraud' | 'Escalated';
+  status: 'Safe' | 'Suspicious';
+  riskScore?: number;
   flag_type?: string;
   flag_reason?: string;
   flags?: Array<{ type: string; reason: string }>;

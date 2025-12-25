@@ -1,9 +1,0 @@
-{
-  "feature_cols": [
-    "Amount",
-    "UserID",
-    "City",
-    "Category",
-    "hour"
-  ]
-}

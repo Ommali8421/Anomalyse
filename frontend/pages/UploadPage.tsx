@@ -39,9 +39,20 @@ const UploadPage: React.FC = () => {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold text-slate-900">Data Ingestion</h1>
-        <p className="text-slate-500">Upload batch transaction files (CSV) for anomaly detection.</p>
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Data Ingestion</h1>
+          <p className="text-slate-500">Upload batch transaction files (CSV) for anomaly detection.</p>
+        </div>
+        <a 
+          href="https://drive.google.com/drive/folders/13NxFgHVNYKJAydSyvts_yTOqJNbNu4pf" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-2 rounded-lg border border-blue-100 transition-colors"
+        >
+          <FileText className="w-4 h-4" />
+          Get Demo CSV File
+        </a>
       </header>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8">

@@ -98,6 +98,29 @@ const LoginPage: React.FC = () => {
             </button>
           </form>
 
+          <div className="mt-8 pt-6 border-t border-slate-100">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Demo Login Credentials</p>
+            <div className="space-y-2 bg-slate-50 p-4 rounded-lg border border-slate-200">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-500">ID:</span>
+                <span className="font-mono text-slate-900">analyst@anomalyse.bank</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-500">Password:</span>
+                <span className="font-mono text-slate-900">password123</span>
+              </div>
+              <button
+                onClick={() => {
+                  setEmail('analyst@anomalyse.bank');
+                  setPassword('password123');
+                }}
+                className="w-full mt-2 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-md transition-all"
+              >
+                Auto-fill Demo Credentials
+              </button>
+            </div>
+          </div>
+
           <div className="mt-6 text-center">
             <p className="text-xs text-slate-400">
               Restricted Access. Authorized Personnel Only. <br/>

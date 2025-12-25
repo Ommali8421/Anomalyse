@@ -23,6 +23,19 @@ export const transactionService = {
     }
     return await resp.json();
   },
+  notifyTransaction: async (id: string): Promise<{ success: boolean }> => {
+    const token = localStorage.getItem('anomalyse_token');
+    const resp = await fetch(`${API_CONFIG.BASE_URL}/transactions/notify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
+      },
+      body: JSON.stringify({ id })
+    });
+    if (!resp.ok) throw new Error('Failed to trigger notification');
+    return await resp.json();
+  },
   clearTransactions: async (): Promise<{ success: boolean; deleted: number }> => {
     const token = localStorage.getItem('anomalyse_token');
     const resp = await fetch(`${API_CONFIG.BASE_URL}/transactions/clear`, {
