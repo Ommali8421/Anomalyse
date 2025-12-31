@@ -50,7 +50,7 @@ Follow these steps to get the project running on your local machine.
 
 ### **1. Clone the Repository**
 ```bash
-git clone https://github.com/ShrutiPawar8055/Anomalyse
+git clone https://github.com/Ommali8421/Anomalyse
 cd Anomalyse-main
 ```
 
