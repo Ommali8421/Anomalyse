@@ -103,7 +103,7 @@ The AI chatbot requires a Gemini API key.
 1. Create a `.env` file in the `frontend` directory.
 2. Add your API key:
    ```env
-   VITE_GEMINI_API_KEY=AIzaSyD9_Q_haE2pznIn9xwouPIxDb65nTi8IDo
+   VITE_GEMINI_API_KEY=Insert_API_key
    ```
    *Note: Access the chatbot at `http://localhost:5173/#/chat`*
 
